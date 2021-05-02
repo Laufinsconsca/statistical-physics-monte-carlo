@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt  # отрисовка графиков
-import numpy as np
 import numba
+import numpy as np
 
 
 def plot(x, f, title, x_label, y_label):

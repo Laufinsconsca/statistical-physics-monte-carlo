@@ -18,14 +18,14 @@ def calculate_pair_correlation_function(molecules_ensemble, r, delta_r, L, n):
     :return: массив значений корреляционной функции
     """
     pair_corr_func = np.zeros((len(r)))
-    for j in prange(len(r)):
+    for i in prange(len(r)):
         delta_N = 0
-        for k in range(len(molecules_ensemble)):
-            for i in range(len(molecules_ensemble[0])):
-                delta_N += number_of_molecules_in_a_spherical_layer(molecules_ensemble[k], r[j], delta_r, i, L)
+        for j in range(len(molecules_ensemble)):
+            for k in range(len(molecules_ensemble[0])):
+                delta_N += number_of_molecules_in_a_spherical_layer(molecules_ensemble[j], r[i], delta_r, k, L)
         delta_N = delta_N / (len(molecules_ensemble) * len(molecules_ensemble[0]))
         # среднее количество частиц в шаровом слое
-        pair_corr_func[j] = delta_N / (4 * np.pi * r[j] * r[j] * delta_r * n)  # корреляционная функция
+        pair_corr_func[i] = delta_N / (4 * np.pi * r[i] * r[i] * delta_r * n)  # корреляционная функция
     return pair_corr_func
 
 
@@ -39,29 +39,13 @@ def number_of_molecules_in_a_spherical_layer(molecules, r, delta_r, num, L):
     :param delta_r: толщина сферического слоя
     :param num: номер выделенной молекулы
     :param L: длина ребра ячейки моделирования
-    :return: количество молекул в сферическом слое
+    :return: количество молекул в сферическом слое выделенной молекулы
     """
     focused_molecules = focus_on_given_molecule(molecules, num, L)
-    # фокусируемся на выделенной молекуле (мысленно помещаем её в центр) ячейки моделирования
+    # фокусируемся на выделенной молекуле (мысленно помещаем её в центр ячейки моделирования)
     # это необходимо для учёта частиц из соседних ячеек
     N = 0
-    for j in range(len(molecules)):
-        if j != num:
-            N += is_there_the_molecule_in_the_spherical_layer(focused_molecules[num], focused_molecules[j], r, delta_r)
+    for i in range(len(molecules)):
+        if i != num and (r - delta_r / 2) < distance(focused_molecules[num], focused_molecules[i]) < (r + delta_r / 2):
+            N += 1
     return N
-
-
-@numba.njit(cache=True)
-def is_there_the_molecule_in_the_spherical_layer(given_molecule, a_molecule, r, delta_r):
-    """
-    Проверка попала ли частица в шаровой слой
-
-    :param given_molecule: молекула, относительно которой берётся сферический слой
-    :param a_molecule: любая молекула
-    :param r: расстояние, на которое отстоит середина толщины сферического слоя от выделенной молекулы
-    :param delta_r: толщина сферического слоя
-    :return: 1 если молекула попала в сферический слой, 0 – иначе
-    """
-    if (r - delta_r / 2) < distance(given_molecule, a_molecule) < (r + delta_r / 2):
-        return 1
-    return 0
