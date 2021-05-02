@@ -95,7 +95,7 @@ if __name__ == '__main__':
         molecules_ensemble[0] = populate_cube(N_coordinate, L / N_coordinate)
         # заполняем куб частицами (начальное расположение)
         #  --------------------------- <разыгрываем состояния> ---------------------------------------------------------
-        molecules_ensemble = play_out_conditions(molecules_ensemble, M, M_relax, N, delta, L, T[i])
+        molecules_ensemble = play_out_conditions(molecules_ensemble, M, N, delta, L, T[i])
         print("Состояния разыграны")
         #  --------------------------- </разыгрываем состояния> --------------------------------------------------------
         pair_corr_func[i] = calculate_pair_correlation_function(molecules_ensemble, r, delta_r, L, n)
