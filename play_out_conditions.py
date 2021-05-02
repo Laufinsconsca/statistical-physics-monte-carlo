@@ -6,20 +6,32 @@ from molecule_potential_energy import molecule_potential_energy
 
 
 @numba.njit(cache=True)
-def play_out_conditions(M, molecules_ensemble, N, delta, L, T):
-    for m in range(M - 1):  # идём в цикле от 2 до последнего состояния
+def play_out_conditions(molecules_ensemble, M, M_relax, N, delta, L, T):
+    """
+    Функция разыгрывания состояний
+
+    :param molecules_ensemble: массив, содержащий набор частиц в начальном состоянии
+    :param M: общее число состояний
+    :param M_relax: число отсеиваемых состояний
+    :param N: общее число частиц
+    :param delta: параметр сдвига
+    :param L: длина ребра ячейки моделирования
+    :param T: безразмерная температура
+    :return: массив, содержащий набор частиц во всех учитываемых (неотсянных) состояниях
+    """
+    for m in range(M - 1):  # идём в цикле от 1 до последнего состояния
+        prev = molecules_ensemble[m % (M - M_relax)]  # определяем предыдущее состояние как prev
         num = np.random.randint(0, N)  # разыграли номер молекулы
-        prev = molecules_ensemble[m]  # определяем предыдущее состояние как prev
         coordinate = np.random.randint(0, 3)  # разыграли координату
         shift_ = delta * np.random.uniform(-1, 1)  # разыграли сдвиг по координате
-        U_previous = molecule_potential_energy(num, prev,
-                                               L)  # считаем потенциальную энергию выбранной частицы в предыдущем
-        # состоянии
+        U_previous = molecule_potential_energy(prev, num, L)
+        # считаем потенциальную энергию выбранной частицы в предыдущем состоянии
         cur = shift(prev, shift_, num, coordinate, L)  # определяем новый набор частиц с учётом сдвига
-        U_current = molecule_potential_energy(num, cur,
-                                              L)  # считаем потенциальную энергию выбранной частицы в текущем состоянии
+        U_current = molecule_potential_energy(cur, num, L)
+        # считаем потенциальную энергию выбранной частицы в текущем состоянии
         diff = U_current - U_previous  # разница энергий
         if not (diff < 0 or np.random.uniform(0, 1) < np.exp(-diff / T)):  # проверяем условие принятия состояния
             cur = prev  # возвращаем частицу на место если новое состояние не подошло
-        molecules_ensemble[m + 1] = cur  # сохраняем новое состояние в ансамбль
+        molecules_ensemble[0 if m % (M - M_relax) == M - M_relax - 1 else (m % (M - M_relax)) + 1] = cur
+        # сохраняем с перезаписыванием новое состояние в ансамбль
     return molecules_ensemble

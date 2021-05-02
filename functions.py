@@ -3,9 +3,18 @@ import numpy as np
 import numba
 
 
-def plot(x, function, title, x_label, y_label):
+def plot(x, f, title, x_label, y_label):
+    """
+    Построение графика
+
+    :param x: массив аргументов функции
+    :param f: массив значений функции
+    :param title: заглавие графика
+    :param x_label: обозначение шкалы абсцисс
+    :param y_label: обозначение шкалы ординат
+    """
     plt.figure(figsize=(11, 8), dpi=80)
-    plt.scatter(x, function, s=5)
+    plt.scatter(x, f, s=5)
     plt.title(title)
     plt.xlabel(x_label)
     plt.ylabel(y_label)
@@ -14,12 +23,29 @@ def plot(x, function, title, x_label, y_label):
 
 
 @numba.njit(cache=True)
-def distance(first, second):  # расстояние между двумя молекулами
+def distance(first, second):
+    """
+    Расстояние между двумя молекулами
+
+    :param first: первая молекула
+    :param second: вторая молекула
+    :return: расстояние между двумя молекулами
+    """
     return np.sqrt((first[0] - second[0]) ** 2 + (first[1] - second[1]) ** 2 + (first[2] - second[2]) ** 2)
 
 
 @numba.njit(cache=True)
-def shift(molecules, shift_, num, coordinate, L):  # сдвиг заданной молекулы в заданном направлении
+def shift(molecules, shift_, num, coordinate, L):
+    """
+    Смещение в массиве молекул одной заданной молекулы в заданном направлении на заданную величину
+
+    :param molecules: массив молекул в нектором состоянии
+    :param shift_: величина смещения
+    :param num: номер заданной молекулы
+    :param coordinate: номер заданной координаты (0 – "x", 1 – "y", 2 – "z")
+    :param L: длина ребра ячейки моделирования
+    :return: массив частиц в некотором состоянии, в котором одна из частиц подвеглась сдвигу
+    """
     shifted_molecules = molecules.copy()
     if coordinate == 0:
         shifted_molecules[num] = shift_a_molecule(shifted_molecules[num], shift_, 0, L)
@@ -31,23 +57,42 @@ def shift(molecules, shift_, num, coordinate, L):  # сдвиг заданной
 
 
 @numba.njit(cache=True)
-def shift_a_molecule(molecule, shift_, coord, L):  # сдвиг молекулы с учётом выхода за границу ячейки моделирования
-    if molecule[coord] + shift_ >= L:
-        molecule[coord] = molecule[coord] + shift_ - L
-    elif molecule[coord] + shift_ < 0:
-        molecule[coord] = molecule[coord] + shift_ + L
+def shift_a_molecule(molecule, shift_, coordinate, L):  # сдвиг молекулы с учётом выхода за границу ячейки моделирования
+    """
+    Сдвиг молекулы
+
+    :param molecule: некоторая молекула
+    :param shift_: величина сдвига
+    :param coordinate: номер заданной координаты (0 – "x", 1 – "y", 2 – "z")
+    :param L: длина ребра ячейки моделирования
+    :return: молекула, сдвинутая на заданную величину в заданном направлении
+    """
+
+    if molecule[coordinate] + shift_ >= L:
+        molecule[coordinate] = molecule[coordinate] + shift_ - L
+    elif molecule[coordinate] + shift_ < 0:
+        molecule[coordinate] = molecule[coordinate] + shift_ + L
     else:
-        molecule[coord] = molecule[coord] + shift_
+        molecule[coordinate] = molecule[coordinate] + shift_
     return molecule
 
 
 @numba.njit(cache=True)
-def focus_on(i, molecules, L):  # фокусирование на выделенной частице (помещение её в центр ячейки моделирования)
+def focus_on_given_molecule(molecules, num, L):
+    """
+    Фокус на выделенной молекуле (помещение её в центр ячейки моделирования).
+    Это необходимо для учёта взаимодействия с частицами из соседних ячеек
+
+    :param molecules: массив молекул в некотором состоянии
+    :param num: номер выделенной молекулы
+    :param L: длина ребра ячейки моделирования
+    :return: массив молекул в некотором состоянии, содержащий выделенную частицу в центре ячейки моделирования
+    """
     focused_molecules = np.zeros_like(molecules)
-    # создаём заполненный нулями массив той же размерности что и molecules
-    x_shift = L / 2 - molecules[i][0]
-    y_shift = L / 2 - molecules[i][1]
-    z_shift = L / 2 - molecules[i][2]
+    # создаём заполненный нулями массив той же размерности, что и molecules
+    x_shift = L / 2 - molecules[num][0]
+    y_shift = L / 2 - molecules[num][1]
+    z_shift = L / 2 - molecules[num][2]
     for k in range(len(molecules)):
         x = molecules[k][0]
         y = molecules[k][1]
