@@ -103,7 +103,7 @@ if __name__ == '__main__':
     for i in range(len(T)):
         print("Начат расчёт при T = " + str(T[i] * T0) + " K")
         start_play_out_time = time.time()
-        print("Дата и время начала расчёта: " + time.strftime("%D %H:%M:%S", time.gmtime(start_play_out_time))
+        print("Дата и время начала расчёта: " + time.strftime("%D %H:%M:%S", time.localtime(start_play_out_time))
               + " hh:mm:ss")
         molecules_ensemble = np.zeros((M - M_relax, N, 3))  # содержит положения всех частиц во всех состояниях
         molecules_ensemble[0] = populate_cube(N_coordinate, L / N_coordinate)
@@ -117,7 +117,7 @@ if __name__ == '__main__':
             "Время разыгрывания состояний = " + str(datetime.timedelta(seconds=end_play_out_time - start_play_out_time))
             + " hh:mm:ss")
         print("Дата и время конца разыгрывания состояний: " +
-              time.strftime("%D %H:%M:%S", time.gmtime(end_play_out_time)) + " hh:mm:ss")
+              time.strftime("%D %H:%M:%S", time.localtime(end_play_out_time)) + " hh:mm:ss")
         #  --------------------------- </разыгрываем состояния> --------------------------------------------------------
         start_corr_func_calc_time = time.time()
         print("Ищем парную корреляционную функцию...")
@@ -132,7 +132,7 @@ if __name__ == '__main__':
         #  --------------------------- </сохраняем массив с корреляционной функцией> -----------------------------------
         print("Парная корреляционная функция найдена")
         print("Дата и время конца расчёта корреляционной функции: " +
-              time.strftime("%D %H:%M:%S", time.gmtime(end_corr_func_calc_time)) + " hh:mm:ss")
+              time.strftime("%D %H:%M:%S", time.localtime(end_corr_func_calc_time)) + " hh:mm:ss")
         print("Общее время расчёта: " +
               str(datetime.timedelta(seconds=
                                      end_play_out_time - start_play_out_time + end_corr_func_calc_time
