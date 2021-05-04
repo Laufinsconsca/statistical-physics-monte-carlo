@@ -117,3 +117,17 @@ def focus_on_given_molecule(molecules, num, L):
         else:
             focused_molecules[k][2] = z + z_shift
     return focused_molecules
+
+
+@numba.njit(cache=True)
+def output_execution_percentage(execution_percentage, description, percentage_of_completion):
+    """
+    Выводит в консоль текущий процент выполнения
+
+    :param execution_percentage: класс типа ExecutionPercentage, хранящий параметры вывода процента выполнения в консоль
+    :param description: описание выполняемого процесса
+    :param percentage_of_completion: текущий процент выполнения
+    """
+    print(description + ": " + str(int(percentage_of_completion)) + "." +
+          str(int((10 ** execution_percentage.number_of_decimal_places) *
+                  (percentage_of_completion - int(percentage_of_completion)))) + "%")
