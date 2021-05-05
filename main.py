@@ -5,7 +5,7 @@ from os import path
 
 import numpy as np
 
-from correlation_function import calculate_pair_correlation_function
+from correlation_function_cuda import calculate_pair_correlation_function
 from execution_percentage import ExecutionPercentage
 from functions import plot
 from play_out_conditions import play_out_conditions
@@ -24,11 +24,11 @@ if __name__ == '__main__':
     k = 1.38e-23  # постоянная Больцмана, Дж/К
     #  --------------------------- </общие константы> ------------------------------------------------------------------
     #  --------------------------- <задаваемые константы задачи> -------------------------------------------------------
-    N = 7 ** 3  # число частиц в одной ячейке (должно быть кубом натурального числа)
-    M = 50000  # количество разыгрываемых состояний
+    N = 5 ** 3  # число частиц в одной ячейке (должно быть кубом натурального числа)
+    M = 500000  # количество разыгрываемых состояний
     h_T = 0.1  # шаг изменения безразмерной температуры
     delta = 0.1  # константа рандомного сдвига молекулы
-    M_relax = 49900  # количество отсеиваемых состояний (по умолчанию 1000)
+    M_relax = 499000  # количество отсеиваемых состояний (по умолчанию 1000)
     #  ------------------------------ <отображение процента выполнения> ------------------------------------------------
     output_percentage_to_console = True  # позволяет отслеживать процент выполнения программы однако
     # снижает производительность (при N <= 1000 примерно на 10%)
@@ -49,7 +49,6 @@ if __name__ == '__main__':
     h_r_the_first_peak_right = 0.01  # шаг изменения аргумента корреляционной функции вдоль первого пика справа
     # от вершины
     h_r_right = 0.01  # шаг изменения аргумента корреляционной функции после первого пика
-    r_min_left = 0.01  # начальный аргумент корреляционной функции
     r_max_left = 0.8  # конец нуля корреляционной функции
     r_max_first_peak_left = 1.05  # конец левой части первого пика корреляционной функции
     r_max_top_of_the_first_peak = 1.15  # конец вершины пика корреляционной функции
@@ -72,6 +71,7 @@ if __name__ == '__main__':
     V = N / n  # безразмерный объём
     L = V ** (1. / 3)  # безразмерная длина ребра ячейки моделирования
     #  ------------------------------ <параметры корреляционной функции> -----------------------------------------------
+    r_min_left = delta_r + 0.01  # начальный аргумент корреляционной функции
     r_min_first_peak_left = r_max_left + h_r_the_first_peak_left  # начало левой части первого пика
     # корреляционной функции
     r_min_top_of_the_first_peak = r_max_first_peak_left + h_r_top_of_the_first_peak  # начало вершины пика
@@ -105,7 +105,8 @@ if __name__ == '__main__':
         start_play_out_time = time.time()
         print("Дата и время начала расчёта: " + time.strftime("%D %H:%M:%S", time.localtime(start_play_out_time))
               + " hh:mm:ss")
-        molecules_ensemble = np.zeros((M - M_relax, N, 3))  # содержит положения всех частиц во всех состояниях
+        molecules_ensemble = np.zeros((M - M_relax, N, 3), dtype = np.float32)
+        # содержит положения всех частиц во всех состояниях
         molecules_ensemble[0] = populate_cube(N_coordinate, L / N_coordinate)
         # заполняем куб частицами (начальное расположение)
         #  --------------------------- <разыгрываем состояния> ---------------------------------------------------------
@@ -114,7 +115,7 @@ if __name__ == '__main__':
         end_play_out_time = time.time()
         print("Состояния разыграны")
         print(
-            "Время разыгрывания состояний = " + str(datetime.timedelta(seconds=end_play_out_time - start_play_out_time))
+            "Время разыгрывания состояний: " + str(datetime.timedelta(seconds=end_play_out_time - start_play_out_time))
             + " hh:mm:ss")
         print("Дата и время конца разыгрывания состояний: " +
               time.strftime("%D %H:%M:%S", time.localtime(end_play_out_time)) + " hh:mm:ss")
@@ -131,6 +132,8 @@ if __name__ == '__main__':
         np.save(folder_name + "/corr_func M=" + str(M) + ", N=" + str(N) + ", T=" + str(T[i]), pair_corr_func[i])
         #  --------------------------- </сохраняем массив с корреляционной функцией> -----------------------------------
         print("Парная корреляционная функция найдена")
+        print("Время расчёта корреляционной функции: "
+              + str(datetime.timedelta(seconds=end_corr_func_calc_time - start_corr_func_calc_time)) + " hh:mm:ss")
         print("Дата и время конца расчёта корреляционной функции: " +
               time.strftime("%D %H:%M:%S", time.localtime(end_corr_func_calc_time)) + " hh:mm:ss")
         print("Общее время расчёта: " +
