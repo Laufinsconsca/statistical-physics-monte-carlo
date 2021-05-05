@@ -105,7 +105,7 @@ if __name__ == '__main__':
         start_play_out_time = time.time()
         print("Дата и время начала расчёта: " + time.strftime("%D %H:%M:%S", time.localtime(start_play_out_time))
               + " hh:mm:ss")
-        molecules_ensemble = np.zeros((M - M_relax, N, 3), dtype = np.float32)
+        molecules_ensemble = np.zeros((M - M_relax, N, 3), dtype=np.float32)
         # содержит положения всех частиц во всех состояниях
         molecules_ensemble[0] = populate_cube(N_coordinate, L / N_coordinate)
         # заполняем куб частицами (начальное расположение)

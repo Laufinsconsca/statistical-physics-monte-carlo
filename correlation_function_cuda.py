@@ -4,20 +4,17 @@ from pycuda.autoinit import context
 import pycuda.autoinit
 from pycuda.compiler import SourceModule
 
-kernel_code_template = """
+kernel_code = """
   #include <stdio.h>
 
-__global__ void kernel(float* molecules, float* r, int* N) {
+__global__ void kernel(float* molecules, int* N, double r, double delta_r, double L, int mdim, int ndim) {
   const int idx = 3 * (threadIdx.x + blockDim.x * blockIdx.x);
   const int idy = threadIdx.y + blockDim.y * blockIdx.y;
-  const int mdim = %(MDIM)s;
-  const int ndim = %(NDIM)s;
   if (idy < mdim && idx < ndim) {
-  float L = %(L)s;
-  float x_shift = L / 2 - molecules[idx + idy * ndim];
-  float y_shift = L / 2 - molecules[idx + 1 + idy * ndim];
-  float z_shift = L / 2 - molecules[idx + 2 + idy * ndim];
-  float x, y, z, d, temp;
+  double x_shift = L / 2 - molecules[idx + idy * ndim];
+  double y_shift = L / 2 - molecules[idx + 1 + idy * ndim];
+  double z_shift = L / 2 - molecules[idx + 2 + idy * ndim];
+  double x, y, z, d, temp;
   for (int i = 0; i < ndim; i += 3) {
         if (i != idx) {
         x = molecules[i + idy * ndim];
@@ -48,8 +45,8 @@ __global__ void kernel(float* molecules, float* r, int* N) {
         }
         d += pow(temp - L / 2, 2);
         d = sqrt(d);
-        if ((r[0] - %(DELTA_R_2)s) < d && d < (r[0] + %(DELTA_R_2)s)) {
-                atomicAdd(N, 1);
+        if ((r - delta_r) < d && d < (r + delta_r)) {
+            atomicAdd(N, 1);
         }
         d = 0;
         } 
@@ -77,23 +74,23 @@ def calculate_pair_correlation_function(molecules_ensemble, r, delta_r, L, n, ex
     dx, mx = divmod(len(molecules_ensemble[0]), block_dim[0])
     dy, my = divmod(len(molecules_ensemble), block_dim[1])
     grid_dim = ((dx + int(mx > 0)) * block_dim[0], (dy + int(my > 0)) * block_dim[1])  # размерность сетки
-    kernel_code = kernel_code_template % {
-        "MDIM": len(molecules_ensemble),
-        "NDIM": 3 * len(molecules_ensemble[0]),
-        "L": L, "DELTA_R_2": delta_r/2
-    }
     mod = SourceModule(kernel_code)
     calculate = mod.get_function("kernel")
     # --------------------------- </настраиваем ядро GPU> --------------------------------------------------------------
-    r_ = np.zeros(1, dtype=np.float32)
     delta_N = drv.managed_zeros(shape=1, dtype=np.int32, mem_flags=drv.mem_attach_flags.GLOBAL)
     # инициализируем delta_N в общей памяти
     for i in range(len(r)):
-        r_[0] = r[i]
-        calculate(drv.In(molecules_ensemble.flatten()), drv.In(r_), delta_N, block=block_dim, grid=grid_dim)
+        calculate(drv.In(molecules_ensemble.flatten()),
+                  delta_N,
+                  r[i],
+                  np.float64(delta_r/2),
+                  np.float64(L),
+                  np.int32(len(molecules_ensemble)),
+                  np.int32(3 * len(molecules_ensemble[0])),
+                  block=block_dim, grid=grid_dim)
         context.synchronize()
-        delta_N[0] = delta_N[0] / (len(molecules_ensemble) * len(molecules_ensemble[0]))
+        delta_N_temp = delta_N[0] / np.float64((len(molecules_ensemble) * len(molecules_ensemble[0])))
         # среднее количество частиц в шаровом слое
-        pair_corr_func[i] = delta_N[0] / (4 * np.pi * r[i] * r[i] * delta_r * n)  # корреляционная функция
+        pair_corr_func[i] = delta_N_temp / (4 * np.pi * r[i] * r[i] * delta_r * n)  # корреляционная функция
         delta_N[0] = 0
     return pair_corr_func
