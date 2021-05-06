@@ -78,13 +78,13 @@ def number_of_molecules_in_a_spherical_layer(molecules, r, delta_r, num, L):
 
 kernel_code = """
 __global__ void kernel(float* molecules, int* N, double* r, double delta_r, double L, int rdim, int mdim, int ndim, 
-unsigned long long int* progress, int is_output_progress_to_console, float play_out_lower_bound_progress, 
+unsigned long long int* progress, int is_output_progress_to_console, float lower_bound_progress, 
 char* progress_string) {
   const int idx = 3 * (threadIdx.x + blockDim.x * blockIdx.x);
   const int idy = threadIdx.y + blockDim.y * blockIdx.y;
   const int idz = threadIdx.z + blockDim.z * blockIdx.z;
   if (idx < ndim && idy < rdim && idz < mdim) {
-  double progress_max = rdim*mdim*ndim;
+  double progress_max = (((double)rdim)*mdim*ndim)/300;
   double x_shift = L / 2 - molecules[idx + idz * ndim];
   double y_shift = L / 2 - molecules[idx + 1 + idz * ndim];
   double z_shift = L / 2 - molecules[idx + 2 + idz * ndim];
@@ -127,14 +127,14 @@ char* progress_string) {
   }
   if (is_output_progress_to_console) {
     atomicAdd(&progress[1], 1);
-    if ((progress[1] - progress[0]) <= play_out_lower_bound_progress) {
+    if ((progress[1] - progress[0]) <= lower_bound_progress) {
         atomicExch(&progress[2], 0);
     } else {
         atomicExch(&progress[2], !progress[2]);
         atomicExch(&progress[0], progress[1]);
     }
     if (progress[2] && idy % blockDim.y == 0){
-        printf(progress_string, 300*progress[1]/progress_max);
+        printf(progress_string, progress[1]/progress_max);
     }
   }
   }
@@ -147,7 +147,6 @@ def calculate_pair_correlation_function_on_gpu(molecules_ensemble, r, delta_r, L
     """
     Вычисление парной корреляционной функции
 
-    :param block_dim:
     :param molecules_ensemble: набор частиц во всех оставшихся состояних, по которым усредняем
     :param r: массив аргументов функции
     :param delta_r: толщина шарового слоя
@@ -155,6 +154,7 @@ def calculate_pair_correlation_function_on_gpu(molecules_ensemble, r, delta_r, L
     :param n: средняя концентрация
     :param execution_progress_struct: класс, хранящий параметры вывода процента выполнения в консоль
     :return: массив значений корреляционной функции
+    :param block_dim: размерность блока (максимальная размерность блока ограничена возможностями GPU)
     """
     # --------------------------- <настраиваем ядро GPU> ---------------------------------------------------------------
     dx, mx = divmod(len(molecules_ensemble[0]), block_dim[0])
@@ -166,8 +166,7 @@ def calculate_pair_correlation_function_on_gpu(molecules_ensemble, r, delta_r, L
     calculate = mod.get_function("kernel")
     # --------------------------- </настраиваем ядро GPU> --------------------------------------------------------------
     delta_N = drv.managed_zeros(shape=len(r), dtype=np.int32, mem_flags=drv.mem_attach_flags.GLOBAL)
-    progress = drv.managed_zeros(shape=4, dtype=np.uint64, mem_flags=drv.mem_attach_flags.GLOBAL)
-    progress[2] = 0
+    progress = drv.managed_zeros(shape=3, dtype=np.uint64, mem_flags=drv.mem_attach_flags.GLOBAL)
     progress_string = bytearray("Вычисление корреляционной функции: %."
                                 + str(execution_progress_struct.number_of_decimal_places) + "f%%\n", 'utf-8')
     d_progress_string = drv.mem_alloc(len(progress_string))
