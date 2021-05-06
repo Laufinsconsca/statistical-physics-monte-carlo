@@ -1,12 +1,12 @@
 import numba
 import numpy as np
-from functions import shift, output_execution_percentage
+from functions import shift, output_execution_progress
 
 from molecule_potential_energy import molecule_potential_energy
 
 
 @numba.njit(cache=True)
-def play_out_conditions(molecules_ensemble, M, N, delta, L, T, execution_percentage_struct):
+def play_out_conditions(molecules_ensemble, M, N, delta, L, T, execution_progress_struct):
     """
     Функция разыгрывания состояний
 
@@ -16,15 +16,16 @@ def play_out_conditions(molecules_ensemble, M, N, delta, L, T, execution_percent
     :param delta: параметр сдвига
     :param L: длина ребра ячейки моделирования
     :param T: безразмерная температура
-    :param execution_percentage_struct:
+    :param execution_progress_struct: класс типа ExecutionProgress, хранящий параметры вывода процента выполнения
+    в консоль
     :return: массив, содержащий набор частиц во всех учитываемых (неотсянных) состояниях
     """
-    percentage_of_completion = 0
+    progress = 0
     p = 1  # период отображения процента выполнения (в итерациях)
     M_accounted = len(molecules_ensemble)  # количество учитываемых состояний
     h_p = 100 / M
-    if execution_percentage_struct.output_percentage_to_console:
-        while execution_percentage_struct.lower_bound > h_p * p:
+    if execution_progress_struct.output_progress_to_console:
+        while execution_progress_struct.lower_bound > h_p * p:
             p += 1
     for m in range(M - 1):  # идём в цикле от 1 до последнего состояния
         prev = molecules_ensemble[m % M_accounted]  # определяем предыдущее состояние как prev
@@ -41,9 +42,9 @@ def play_out_conditions(molecules_ensemble, M, N, delta, L, T, execution_percent
             cur = prev  # возвращаем частицу на место если новое состояние не подошло
         molecules_ensemble[0 if m % M_accounted == M_accounted - 1 else (m % M_accounted) + 1] = cur
         # сохраняем с перезаписыванием новое состояние в ансамбль
-        if execution_percentage_struct.output_percentage_to_console:
-            percentage_of_completion += h_p
+        if execution_progress_struct.output_progress_to_console:
+            progress += h_p
             if m % p == 0:
-                output_execution_percentage(execution_percentage_struct, "Разыгрывание состояний",
-                                            percentage_of_completion)
+                output_execution_progress(execution_progress_struct, "Разыгрывание состояний",
+                                          progress)
     return molecules_ensemble

@@ -120,14 +120,14 @@ def focus_on_given_molecule(molecules, num, L):
 
 
 @numba.njit(cache=True)
-def output_execution_percentage(execution_percentage, description, percentage_of_completion):
+def output_execution_progress(execution_progress_struct, description, progress):
     """
     Выводит в консоль текущий процент выполнения
 
-    :param execution_percentage: класс типа ExecutionPercentage, хранящий параметры вывода процента выполнения в консоль
+    :param execution_progress_struct: класс типа ExecutionProgress, хранящий параметры вывода процента выполнения в консоль
     :param description: описание выполняемого процесса
-    :param percentage_of_completion: текущий процент выполнения
+    :param progress: текущий процент выполнения
     """
-    print(description + ": " + str(int(percentage_of_completion)) + "." +
-          str(int((10 ** execution_percentage.number_of_decimal_places) *
-                  (percentage_of_completion - int(percentage_of_completion)))) + "%")
+    print(description + ": " + str(int(progress)) + "." +
+          str(int((10 ** execution_progress_struct.number_of_decimal_places) *
+                  (progress - int(progress)))) + "%")
