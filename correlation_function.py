@@ -33,7 +33,7 @@ def calculate_pair_correlation_function(molecules_ensemble, r, delta_r, L, n, ex
                     delta_N += number_of_molecules_in_a_spherical_layer(molecules_ensemble[j], r[i], delta_r, k, L)
             percentage_of_completion += h_p
             if i % p == 0:
-                output_execution_percentage(execution_percentage_struct, "Расчёт корреляционной функции",
+                output_execution_percentage(execution_percentage_struct, "Вычисление корреляционной функции",
                                             percentage_of_completion)
             delta_N = delta_N / (len(molecules_ensemble) * len(molecules_ensemble[0]))
             # среднее количество частиц в шаровом слое
