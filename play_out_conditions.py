@@ -1,7 +1,7 @@
 import numba
 import numpy as np
-from functions import shift, output_execution_progress
 
+from execution_progress import output_execution_progress
 from molecule_potential_energy import molecule_potential_energy
 
 
@@ -49,3 +49,45 @@ def play_out_states(molecules_ensemble, M, N, delta, L, T, execution_progress_st
                 output_execution_progress(execution_progress_struct, description,
                                           progress)
     return molecules_ensemble
+
+
+@numba.njit(cache=True)
+def shift(molecules, shift_, num, coordinate, L):
+    """
+    Смещение в массиве молекул одной заданной молекулы в заданном направлении на заданную величину
+
+    :param molecules: массив молекул в нектором состоянии
+    :param shift_: величина смещения
+    :param num: номер заданной молекулы
+    :param coordinate: номер заданной координаты (0 – "x", 1 – "y", 2 – "z")
+    :param L: длина ребра ячейки моделирования
+    :return: массив частиц в некотором состоянии, в котором одна из частиц подвеглась сдвигу
+    """
+    shifted_molecules = molecules.copy()
+    if coordinate == 0:
+        shifted_molecules[num] = shift_a_molecule(shifted_molecules[num], shift_, 0, L)
+    elif coordinate == 1:
+        shifted_molecules[num] = shift_a_molecule(shifted_molecules[num], shift_, 1, L)
+    elif coordinate == 2:
+        shifted_molecules[num] = shift_a_molecule(shifted_molecules[num], shift_, 2, L)
+    return shifted_molecules
+
+
+@numba.njit(cache=True)
+def shift_a_molecule(molecule, shift_, coordinate, L):  # сдвиг молекулы с учётом выхода за границу ячейки моделирования
+    """
+    Сдвиг молекулы
+
+    :param molecule: некоторая молекула
+    :param shift_: величина сдвига
+    :param coordinate: номер заданной координаты (0 – "x", 1 – "y", 2 – "z")
+    :param L: длина ребра ячейки моделирования
+    :return: молекула, сдвинутая на заданную величину в заданном направлении
+    """
+    if molecule[coordinate] + shift_ >= L:
+        molecule[coordinate] = molecule[coordinate] + shift_ - L
+    elif molecule[coordinate] + shift_ < 0:
+        molecule[coordinate] = molecule[coordinate] + shift_ + L
+    else:
+        molecule[coordinate] = molecule[coordinate] + shift_
+    return molecule

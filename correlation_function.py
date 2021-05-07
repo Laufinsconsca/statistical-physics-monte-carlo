@@ -1,17 +1,18 @@
 import numba
-from numba import prange
 import numpy as np
-import pycuda.driver as drv
-from pycuda.autoinit import context
-from pycuda.compiler import SourceModule
 # noinspection PyUnresolvedReferences
 import pycuda.autoinit
-from functions import distance, output_execution_progress
-from functions import focus_on_given_molecule
+import pycuda.driver as drv
+from numba import prange
+from pycuda.autoinit import context
+from pycuda.compiler import SourceModule
+
+from execution_progress import output_execution_progress
 
 
 @numba.njit(cache=True, parallel=True)
-def calculate_pair_correlation_function_on_cpu(molecules_ensemble, r, delta_r, L, n, execution_progress_struct):
+def calculate_pair_correlation_function_on_cpu(molecules_ensemble, r, delta_r, L, n, execution_progress_struct,
+                                               description):
     """
     Вычисление парной корреляционной функции
 
@@ -22,58 +23,59 @@ def calculate_pair_correlation_function_on_cpu(molecules_ensemble, r, delta_r, L
     :param n: средняя концентрация
     :param execution_progress_struct: класс типа ExecutionProgress, хранящий параметры отображения процента выполнения
     :return: массив значений корреляционной функции
+    :param description: описание выполняемого процесса
     """
+    d = 0
     pair_corr_func = np.zeros(len(r))
-    if execution_progress_struct.output_progress_to_console:
-        progress = 0
-        h_p = 100 / len(r)
-        p = 1  # период отображения процента выполнения (в итерациях)
-        while execution_progress_struct.lower_bound > h_p * p:
-            p += 1
-        for i in range(len(r)):
-            delta_N = 0
-            for j in prange(len(molecules_ensemble)):
-                for k in range(len(molecules_ensemble[0])):
-                    delta_N += number_of_molecules_in_a_spherical_layer(molecules_ensemble[j], r[i], delta_r, k, L)
+    progress = 0
+    h_p = 100 / len(r)
+    p = 1  # период отображения процента выполнения (в итерациях)
+    while execution_progress_struct.lower_bound > h_p * p:
+        p += 1
+    for i in range(len(r)):
+        delta_N = 0
+        for j in prange(len(molecules_ensemble)):
+            for k in range(len(molecules_ensemble[0])):
+                x_shift = L / 2 - molecules_ensemble[j][k][0]
+                y_shift = L / 2 - molecules_ensemble[j][k][1]
+                z_shift = L / 2 - molecules_ensemble[j][k][2]
+                for q in range(len(molecules_ensemble[0])):
+                    if k != q:
+                        x = molecules_ensemble[j][q][0]
+                        y = molecules_ensemble[j][q][1]
+                        z = molecules_ensemble[j][q][2]
+                        if x + x_shift >= L:
+                            temp = x + x_shift - L
+                        elif x + x_shift < 0:
+                            temp = x + x_shift + L
+                        else:
+                            temp = x + x_shift
+                        d += (temp - L / 2) ** 2
+                        if y + y_shift >= L:
+                            temp = y + y_shift - L
+                        elif y + y_shift < 0:
+                            temp = y + y_shift + L
+                        else:
+                            temp = y + y_shift
+                        d += (temp - L / 2) ** 2
+                        if z + z_shift >= L:
+                            temp = z + z_shift - L
+                        elif z + z_shift < 0:
+                            temp = z + z_shift + L
+                        else:
+                            temp = z + z_shift
+                        d += (temp - L / 2) ** 2
+                        if (r[i] - delta_r / 2) < np.sqrt(d) < (r[i] + delta_r / 2):
+                            delta_N += 1
+                        d = 0
+        if execution_progress_struct.output_progress_to_console:
             progress += h_p
             if i % p == 0:
-                output_execution_progress(execution_progress_struct, "Вычисление корреляционной функции",
+                output_execution_progress(execution_progress_struct, description,
                                           progress)
-            delta_N = delta_N / (len(molecules_ensemble) * len(molecules_ensemble[0]))
-            # среднее количество частиц в шаровом слое
-            pair_corr_func[i] = delta_N / (4 * np.pi * r[i] * r[i] * delta_r * n)  # корреляционная функция
-    else:
-        for i in prange(len(r)):
-            delta_N = 0
-            for j in range(len(molecules_ensemble)):
-                for k in range(len(molecules_ensemble[0])):
-                    delta_N += number_of_molecules_in_a_spherical_layer(molecules_ensemble[j], r[i], delta_r, k, L)
-            delta_N = delta_N / (len(molecules_ensemble) * len(molecules_ensemble[0]))
-            # среднее количество частиц в шаровом слое
-            pair_corr_func[i] = delta_N / (4 * np.pi * r[i] * r[i] * delta_r * n)  # корреляционная функция
-    return pair_corr_func
-
-
-@numba.njit(cache=True)
-def number_of_molecules_in_a_spherical_layer(molecules, r, delta_r, num, L):
-    """
-    Вычисление количества молекул в сферическом слое выделенной молекулы
-
-    :param molecules: массив молекул в некотором состоянии
-    :param r: расстояние, на которое отстоит середина толщины сферического слоя от выделенной молекулы
-    :param delta_r: толщина сферического слоя
-    :param num: номер выделенной молекулы
-    :param L: длина ребра ячейки моделирования
-    :return: количество молекул в сферическом слое выделенной молекулы
-    """
-    focused_molecules = focus_on_given_molecule(molecules, num, L)
-    # фокусируемся на выделенной молекуле (мысленно помещаем её в центр ячейки моделирования)
-    # это необходимо для учёта частиц из соседних ячеек
-    N = 0
-    for i in range(len(molecules)):
-        if i != num and (r - delta_r / 2) < distance(focused_molecules[num], focused_molecules[i]) < (r + delta_r / 2):
-            N += 1
-    return N
+        pair_corr_func[i] = delta_N
+    return pair_corr_func / (4 * np.pi * r * r * delta_r * n
+                             * len(molecules_ensemble) * len(molecules_ensemble[0]))
 
 
 kernel_code = """
@@ -187,8 +189,5 @@ def calculate_pair_correlation_function_on_gpu(molecules_ensemble, r, delta_r, L
               d_progress_string,
               block=block_dim, grid=grid_dim)
     context.synchronize()
-    pair_corr_func = delta_N / (4 * np.pi * r * r * delta_r * n * len(molecules_ensemble) * len(molecules_ensemble[0]))
-    # корреляционная функция
-    return pair_corr_func
-
-
+    return delta_N / (4 * np.pi * r * r * delta_r * n * len(molecules_ensemble) * len(molecules_ensemble[0]))
+    # возвращаем корреляционную функцию

@@ -1,5 +1,6 @@
 from abc import ABC
 
+import numba
 from llvmlite import ir
 from numba import types
 from numba.core import cgutils
@@ -23,6 +24,20 @@ class ExecutionProgress(object):
         self.output_progress_to_console = output_progress_to_console
         self.lower_bound = lower_bound
         self.number_of_decimal_places = number_of_decimal_places
+
+
+@numba.njit(cache=True)
+def output_execution_progress(execution_progress_struct, description, progress):
+    """
+    Выводит в консоль текущий процент выполнения
+
+    :param execution_progress_struct: класс типа ExecutionProgress, хранящий параметры вывода процента выполнения в консоль
+    :param description: описание выполняемого процесса
+    :param progress: текущий процент выполнения
+    """
+    print(description + ": " + str(int(progress)) + "." +
+          str(int((10 ** execution_progress_struct.number_of_decimal_places) *
+                  (progress - int(progress)))) + "%")
 
 
 """

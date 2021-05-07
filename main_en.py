@@ -8,6 +8,7 @@ import numpy as np
 from correlation_function import calculate_pair_correlation_function_on_cpu, calculate_pair_correlation_function_on_gpu
 from execution_progress import ExecutionProgress
 from functions import plot
+from noble_gas import ChooseNobleGas
 from play_out_conditions import play_out_states
 from populate_cube import populate_cube
 from validation import check_n_is_integer, check_M_relax_less_than_M
@@ -21,15 +22,16 @@ class CalculateOn(Enum):
 
 if __name__ == '__main__':
     """
-    PAIR CORRELATION FUNCTION SIMULATION FOR LIQUID ARGON
+    PAIR CORRELATION FUNCTION SIMULATION FOR LIQUID NOBLE GASES
     Brief:
     The pair correlation function shows the ratio of the concentration at a given distance to the average concentration.
     Near zero, the function is zero, since the particles cannot come close to each other.
-    When the distance tends to +∞, the concentration tends to the average, so the ratio tends to 1. 
+    When the distance between particles tends to +∞, the concentration tends to the average, so the ratio tends to 1.
+    The Lennard-Jones potential is used to describe the interaction between particles.
     """
     #  --------------------------- <common constants> ------------------------------------------------------------------
     k = 1.38e-23  # Boltzmann constant, J/K
-    device_to_calculate_pair_correlation_function = CalculateOn.GPU
+    device_to_calculate_pair_correlation_function = CalculateOn.CPU
     # select the CPU or a GPU for calculating the pair correlation function (you can change the GPU device by setting an
     # integer value up to the environment variable CUDA_DEVICE, the first CUDA-supported device is selected by default)
     # (Be aware: GPU calculation is supported only by Nvidia graphics cards)
@@ -46,10 +48,7 @@ if __name__ == '__main__':
     M_relax = 49900  # the number of states to be eliminated (default 1000)
     #  ----------------------------- <gas parameters> ------------------------------------------------------------------
     temperature = 85  # the gas temperature, K
-    mass = 39.948 * 1.660539e-27  # the mass of one Ar molecule, kg
-    energy = 1.04e-2 * 1.6e-19  # the characteristic Ar energy, J
-    sigma = 3.4e-10  # the characteristic Ar length, m
-    ro = 1401  # the density of liquid Ar, kg/m^3
+    chosen_noble_gas = ChooseNobleGas.ARGON  # argon was chosen
     #  ----------------------------- </gas parameters> -----------------------------------------------------------------
     #  ----------------------------- <pair correlation function parameters> --------------------------------------------
     h_r_left = 0.1  # the pair correlation function argument change step until the first peak is reached
@@ -90,12 +89,13 @@ if __name__ == '__main__':
     #  ----------------------------- </displaying the calculating the pair correlation function progress> --------------
     #  -------------------------- <displaying the execution progress> --------------------------------------------------
     #  -------------------------- <constants to be calculated> ---------------------------------------------------------
-    T0 = energy / k  # the characteristic temperature
+    T0 = chosen_noble_gas.value.energy / k  # the characteristic temperature
     T_min = temperature / T0  # the initial calculation temperature
     T_max = temperature / T0  # the final calculation temperature
     T = np.linspace(T_min, T_max, int((T_max - T_min) / h_T + 1))  # the unitless temperature
-    n_concentration = ro / mass  # the concentration
-    n = n_concentration * (sigma ** 3)  # the unitless concentration (sigma acts as the characteristic length)
+    n_concentration = chosen_noble_gas.value.ro / chosen_noble_gas.value.mass  # the concentration
+    n = n_concentration * (chosen_noble_gas.value.sigma ** 3)  # the unitless concentration
+    # (sigma acts as the characteristic length)
     V = N / n  # the unitless volume
     L = V ** (1. / 3)  # the simulation cell edge length
     #  ----------------------------- <pair correlation function parameters> --------------------------------------------
@@ -108,7 +108,7 @@ if __name__ == '__main__':
     # of the pair correlation function's first peak
     r_min_right = r_max_first_peak_right + h_r_right  # the beginning of the pair correlation function relaxation
     r_max_right = (L - delta_r) / 2  # the pair correlation function final argument
-    # (distance from the cube's center to the cube's face)
+    # (the distance from the cube's center to the cube's face)
     r_left = np.linspace(r_min_left, r_max_left, int((r_max_left - r_min_left) / h_r_left) + 1, dtype=np.float32)
     r_first_peak_left = np.linspace(r_min_first_peak_left, r_max_first_peak_left, int((r_max_first_peak_left -
                                                                                        r_max_left)
@@ -142,8 +142,9 @@ if __name__ == '__main__':
     for i in range(len(T)):
         print("The calculation was started, initial T is " + str(T[i] * T0) + " K")
         start_play_out_time = time.time()
-        print("Date and time when the calculation was started: " + time.strftime("%D %H:%M:%S",
-                                                                                 time.localtime(start_play_out_time))
+        print("The date and the time when the calculation was started: " + time.strftime("%D %H:%M:%S",
+                                                                                         time.localtime(
+                                                                                             start_play_out_time))
               + " hh:mm:ss")
         molecules_ensemble = np.zeros((M - M_relax, N, 3), dtype=np.float32)
         # it contains the positions of all particles in all states
@@ -158,7 +159,7 @@ if __name__ == '__main__':
         print(
             "The time spent on playing states out: "
             + str(datetime.timedelta(seconds=end_play_out_time - start_play_out_time)) + " hh:mm:ss")
-        print("Date and time when the states were played out: " +
+        print("The date and the time when the states were played out: " +
               time.strftime("%D %H:%M:%S", time.localtime(end_play_out_time)) + " hh:mm:ss")
         #  -------------------------- </play out states> ---------------------------------------------------------------
         start_corr_func_calc_time = time.time()
@@ -181,7 +182,7 @@ if __name__ == '__main__':
         print("The pair correlation function have been calculated")
         print("The time spent on pair correlation function calculation: "
               + str(datetime.timedelta(seconds=end_corr_func_calc_time - start_corr_func_calc_time)) + " hh:mm:ss")
-        print("Date and time when the pair correlation function was calculated: " +
+        print("The date and the time when the pair correlation function was calculated: " +
               time.strftime("%D %H:%M:%S", time.localtime(end_corr_func_calc_time)) + " hh:mm:ss")
         print("The total calculation time: " +
               str(datetime.timedelta(seconds=
@@ -193,6 +194,6 @@ if __name__ == '__main__':
     # --------------------------- </pair correlation function calculation> ---------------------------------------------
     # --------------------------- <the pair correlation function plotting> ---------------------------------------------
     for i in range(len(T)):
-        plot(r, pair_corr_func[i], "g(r*), the pair correlation function at T = " + str(T[i] * T0) + " K",
-             "r*", "g(r*)")
+        plot(r, pair_corr_func[i], "g(r*), the pair correlation function of " + chosen_noble_gas.value.name_en
+             + " at T = " + str(T[i] * T0) + " K", "r*", "g(r*)")
     # --------------------------- </the pair correlation function plotting> --------------------------------------------
