@@ -8,7 +8,7 @@ import numpy as np
 from correlation_function import calculate_pair_correlation_function_on_cpu, calculate_pair_correlation_function_on_gpu
 from execution_progress import ExecutionProgress
 from functions import plot
-from play_out_conditions import play_out_conditions
+from play_out_conditions import play_out_states
 from populate_cube import populate_cube
 from validation import check_n_is_integer, check_M_relax_less_than_M
 from enum import Enum
@@ -40,10 +40,10 @@ if __name__ == '__main__':
     #  -------------------------- </общие константы> -------------------------------------------------------------------
     #  -------------------------- <задаваемые константы задачи> --------------------------------------------------------
     N = 5 ** 3  # число частиц в одной ячейке (должно быть кубом натурального числа)
-    M = 500000  # количество разыгрываемых состояний
+    M = 50000  # количество разыгрываемых состояний
     h_T = 0.1  # шаг изменения безразмерной температуры
     delta = 0.1  # константа рандомного сдвига молекулы
-    M_relax = 499000  # количество отсеиваемых состояний (по умолчанию 1000)
+    M_relax = 49900  # количество отсеиваемых состояний (по умолчанию 1000)
     #  ----------------------------- <параметры газа> ------------------------------------------------------------------
     temperature = 85  # температура газа, K
     mass = 39.948 * 1.660539e-27  # масса одной молекулы Ar, кг
@@ -75,16 +75,18 @@ if __name__ == '__main__':
     output_play_out_progress_to_console = True  # позволяет отслеживать процент выполнения программы однако
     # снижает производительность (при N <= 1000 примерно на 10%)
     play_out_lower_bound_progress = 5
-    # число, задающее нижнюю границу точности расчитывания процента выполнения (в процентах)
+    # число, задающее нижнюю границу точности рассчитывания процента выполнения (в процентах)
     play_out_number_of_decimal_places = 2  # максимальное число дробных знаков
+    play_out_description = "Разыгрывание состояний"
     #  ----------------------------- </отображение прогресса разыгрывания состояний> -----------------------------------
     #  ----------------------------- <отображение прогресса расчёта корреляционной функции> ----------------------------
     output_pair_corr_func_progress_to_console = True  # позволяет отслеживать процент выполнения программы однако
     # снижает производительность (при N <= 1000 примерно на 10%)
-    pair_corr_func_lower_bound_progress = 1  # уменьшение параметра снижает производительность
+    pair_corr_func_lower_bound_progress = 0.1  # уменьшение параметра снижает производительность
     # так как генерируется больше выводов в консоль
     # число, задающее нижнюю границу точности расчитывания процента выполнения (в процентах)
     pair_corr_func_number_of_decimal_places = 3  # максимальное число дробных знаков
+    pair_corr_func_description = "Вычисление парной корреляционной функции"
     #  ----------------------------- </отображение прогресса расчёта корреляционной функции> ---------------------------
     #  -------------------------- <отображение прогресса выполнения> ---------------------------------------------------
     #  -------------------------- <вычисляемые константы> --------------------------------------------------------------
@@ -92,7 +94,7 @@ if __name__ == '__main__':
     T_min = temperature / T0  # начальная температура расчёта
     T_max = temperature / T0  # конечная температура расчёта
     T = np.linspace(T_min, T_max, int((T_max - T_min) / h_T + 1))  # безразмерная температура
-    n_concentration = ro / mass  # концентрация
+    n_concentration = ro / mass  # средняя концентрация
     n = n_concentration * (sigma ** 3)  # безразмерная концентрация (sigma выступает в роли характерной длины задачи)
     V = N / n  # безразмерный объём
     L = V ** (1. / 3)  # безразмерная длина ребра ячейки моделирования
@@ -106,17 +108,19 @@ if __name__ == '__main__':
     # корреляционной функции
     r_min_right = r_max_first_peak_right + h_r_right  # начало релаксации корреляционной функции
     r_max_right = (L - delta_r) / 2  # конечный аргумент корреляционной функции (расстояние от центра до грани куба)
-    r_left = np.linspace(r_min_left, r_max_left, int((r_max_left - r_min_left) / h_r_left) + 1)
+    r_left = np.linspace(r_min_left, r_max_left, int((r_max_left - r_min_left) / h_r_left) + 1, dtype=np.float32)
     r_first_peak_left = np.linspace(r_min_first_peak_left, r_max_first_peak_left, int((r_max_first_peak_left -
                                                                                        r_max_left)
-                                                                                      / h_r_the_first_peak_left))
+                                                                                      / h_r_the_first_peak_left),
+                                    dtype=np.float32)
     r_top_of_the_first_peak = np.linspace(r_min_top_of_the_first_peak, r_max_top_of_the_first_peak,
                                           int((r_max_top_of_the_first_peak - r_max_first_peak_left)
-                                              / h_r_top_of_the_first_peak))
+                                              / h_r_top_of_the_first_peak), dtype=np.float32)
     r_first_peak_right = np.linspace(r_min_first_peak_right, r_max_first_peak_right,
                                      int((r_max_first_peak_right - r_max_top_of_the_first_peak)
-                                         / h_r_the_first_peak_right))
-    r_right = np.linspace(r_min_right, r_max_right, int((r_max_right - r_max_first_peak_right) / h_r_right))
+                                         / h_r_the_first_peak_right), dtype=np.float32)
+    r_right = np.linspace(r_min_right, r_max_right, int((r_max_right - r_max_first_peak_right) / h_r_right),
+                          dtype=np.float32)
     r = np.r_[r_left, r_first_peak_left, r_top_of_the_first_peak, r_first_peak_right, r_right]
     # конкатенация массивов аргументов корреляционной функции
     #  ----------------------------- </параметры корреляционной функции> -----------------------------------------------
@@ -145,7 +149,8 @@ if __name__ == '__main__':
         # заполняем куб частицами (начальное расположение)
         #  -------------------------- <разыгрываем состояния> ----------------------------------------------------------
         print("Разыгрываем состояния...")
-        molecules_ensemble = play_out_conditions(molecules_ensemble, M, N, delta, L, T[i], play_out_execution_progress)
+        molecules_ensemble = play_out_states(molecules_ensemble, M, N, delta, L, T[i], play_out_execution_progress,
+                                             play_out_description)
         end_play_out_time = time.time()
         print("Состояния разыграны")
         print(
@@ -158,10 +163,12 @@ if __name__ == '__main__':
         print("Ищем парную корреляционную функцию...")
         if device_to_calculate_pair_correlation_function == CalculateOn.CPU:
             pair_corr_func[i] = calculate_pair_correlation_function_on_cpu(molecules_ensemble, r, delta_r, L, n,
-                                                                           pair_corr_func_execution_progress)
+                                                                           pair_corr_func_execution_progress,
+                                                                           pair_corr_func_description)
         elif device_to_calculate_pair_correlation_function == CalculateOn.GPU:
             pair_corr_func[i] = calculate_pair_correlation_function_on_gpu(molecules_ensemble, r, delta_r, L, n,
-                                                                           pair_corr_func_execution_progress, block_dim)
+                                                                           pair_corr_func_execution_progress, block_dim,
+                                                                           pair_corr_func_description)
         end_corr_func_calc_time = time.time()
         #  -------------------------- <сохраняем массив с корреляционной функцией> -------------------------------------
         folder_name = "corr_func_arrays/M=" + str(M) + "/N=" + str(N)

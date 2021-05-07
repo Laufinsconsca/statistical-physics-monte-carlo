@@ -6,7 +6,7 @@ from molecule_potential_energy import molecule_potential_energy
 
 
 @numba.njit(cache=True)
-def play_out_conditions(molecules_ensemble, M, N, delta, L, T, execution_progress_struct):
+def play_out_states(molecules_ensemble, M, N, delta, L, T, execution_progress_struct, description):
     """
     Функция разыгрывания состояний
 
@@ -18,6 +18,7 @@ def play_out_conditions(molecules_ensemble, M, N, delta, L, T, execution_progres
     :param T: безразмерная температура
     :param execution_progress_struct: класс типа ExecutionProgress, хранящий параметры вывода процента выполнения
     в консоль
+    :param description: описание выполняемого процесса
     :return: массив, содержащий набор частиц во всех учитываемых (неотсянных) состояниях
     """
     progress = 0
@@ -45,6 +46,6 @@ def play_out_conditions(molecules_ensemble, M, N, delta, L, T, execution_progres
         if execution_progress_struct.output_progress_to_console:
             progress += h_p
             if m % p == 0:
-                output_execution_progress(execution_progress_struct, "Разыгрывание состояний",
+                output_execution_progress(execution_progress_struct, description,
                                           progress)
     return molecules_ensemble

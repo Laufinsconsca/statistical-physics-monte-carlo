@@ -77,7 +77,7 @@ def number_of_molecules_in_a_spherical_layer(molecules, r, delta_r, num, L):
 
 
 kernel_code = """
-__global__ void kernel(float* molecules, int* N, double* r, double delta_r, double L, int rdim, int mdim, int ndim, 
+__global__ void kernel(float* molecules, int* N, float* r, float delta_r, float L, int rdim, int mdim, int ndim, 
 unsigned long long int* progress, int is_output_progress_to_console, float lower_bound_progress, 
 char* progress_string) {
   const int idx = 3 * (threadIdx.x + blockDim.x * blockIdx.x);
@@ -85,10 +85,10 @@ char* progress_string) {
   const int idz = threadIdx.z + blockDim.z * blockIdx.z;
   if (idx < ndim && idy < rdim && idz < mdim) {
   double progress_max = (((double)rdim)*mdim*ndim)/300;
-  double x_shift = L / 2 - molecules[idx + idz * ndim];
-  double y_shift = L / 2 - molecules[idx + 1 + idz * ndim];
-  double z_shift = L / 2 - molecules[idx + 2 + idz * ndim];
-  double x, y, z, d, temp;
+  float x_shift = L / 2 - molecules[idx + idz * ndim];
+  float y_shift = L / 2 - molecules[idx + 1 + idz * ndim];
+  float z_shift = L / 2 - molecules[idx + 2 + idz * ndim];
+  float x, y, z, d, temp;
   for (int i = 0; i < ndim; i += 3) {
         if (i != idx) {
         x = molecules[i + idz * ndim];
@@ -143,7 +143,7 @@ char* progress_string) {
 
 
 def calculate_pair_correlation_function_on_gpu(molecules_ensemble, r, delta_r, L, n, execution_progress_struct,
-                                               block_dim):
+                                               block_dim, description):
     """
     Вычисление парной корреляционной функции
 
@@ -155,6 +155,7 @@ def calculate_pair_correlation_function_on_gpu(molecules_ensemble, r, delta_r, L
     :param execution_progress_struct: класс, хранящий параметры вывода процента выполнения в консоль
     :return: массив значений корреляционной функции
     :param block_dim: размерность блока (максимальная размерность блока ограничена возможностями GPU)
+    :param description: описание выполняемого процесса
     """
     # --------------------------- <настраиваем ядро GPU> ---------------------------------------------------------------
     dx, mx = divmod(len(molecules_ensemble[0]), block_dim[0])
@@ -167,15 +168,15 @@ def calculate_pair_correlation_function_on_gpu(molecules_ensemble, r, delta_r, L
     # --------------------------- </настраиваем ядро GPU> --------------------------------------------------------------
     delta_N = drv.managed_zeros(shape=len(r), dtype=np.int32, mem_flags=drv.mem_attach_flags.GLOBAL)
     progress = drv.managed_zeros(shape=3, dtype=np.uint64, mem_flags=drv.mem_attach_flags.GLOBAL)
-    progress_string = bytearray("Вычисление корреляционной функции: %."
+    progress_string = bytearray(description + ": %."
                                 + str(execution_progress_struct.number_of_decimal_places) + "f%%\n", 'utf-8')
     d_progress_string = drv.mem_alloc(len(progress_string))
     drv.memcpy_htod(d_progress_string, progress_string)
     calculate(drv.In(molecules_ensemble.flatten()),
               delta_N,
               drv.In(r),
-              np.float64(delta_r / 2),
-              np.float64(L),
+              np.float32(delta_r / 2),
+              np.float32(L),
               np.int32(len(r)),
               np.int32(len(molecules_ensemble)),
               np.int32(3 * len(molecules_ensemble[0])),
