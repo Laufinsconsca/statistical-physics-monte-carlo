@@ -9,7 +9,7 @@ from correlation_function import calculate_pair_correlation_function_on_cpu, cal
 from execution_progress import ExecutionProgress
 from functions import plot
 from noble_gas import ChooseNobleGas
-from play_out_conditions import play_out_states
+from play_out_states import play_out_states
 from populate_cube import populate_cube
 from validation import check_n_is_integer, check_M_relax_less_than_M
 from enum import Enum
@@ -62,7 +62,7 @@ if __name__ == '__main__':
     r_max_first_peak_left = 1.05  # the end of the left side of the pair correlation function's first peak
     r_max_top_of_the_first_peak = 1.15  # the end of the top of the correlation function's peak
     r_max_first_peak_right = 1.3  # the end of the right side of the pair correlation function's first peak
-    delta_r = 0.3  # the spherical layer thickness
+    delta_r = 0.3  # the spherical layer thickness (the value is selected experimentally)
     #  ----------------------------- </pair correlation function parameters> -------------------------------------------
     #  -------------------------- </simulation constants> --------------------------------------------------------------
     #  -------------------------- <input arguments validation> ---------------------------------------------------------
@@ -82,7 +82,7 @@ if __name__ == '__main__':
     #  ----------------------------- <displaying the calculating the pair correlation function progress> ---------------
     output_pair_corr_func_progress_to_console = True  # allows you to track the program execution progress
     # (Be aware: reduces performance, at N <= 1000 by about 10%)
-    pair_corr_func_lower_bound_progress = 0.1  # the number that sets the lower bound for the pair correlation function
+    pair_corr_func_lower_bound_progress = 1  # the number that sets the lower bound for the pair correlation function
     # calculation progress accuracy (in percent), if you reduce the parameter it reduces performance
     pair_corr_func_number_of_decimal_places = 3  # the max number of decimal places
     pair_corr_func_description = "The pair correlation function calculation progress"
