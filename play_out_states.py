@@ -31,11 +31,9 @@ def play_out_states(molecules_ensemble, M, N, delta, L, T, execution_progress_st
     for m in range(M - 1):  # идём в цикле от 1 до последнего состояния
         prev = molecules_ensemble[m % M_accounted]  # определяем предыдущее состояние как prev
         num = np.random.randint(0, N)  # разыграли номер молекулы
-        coordinate = np.random.randint(0, 3)  # разыграли координату
-        shift_ = delta * np.random.uniform(-1, 1)  # разыграли сдвиг по координате
         U_previous = molecule_potential_energy(prev, num, L)
         # считаем потенциальную энергию выбранной частицы в предыдущем состоянии
-        cur = shift(prev, shift_, num, coordinate, L)  # определяем новый набор частиц с учётом сдвига
+        cur = shift(prev, delta, num, L)  # определяем новый набор частиц с учётом сдвига
         U_current = molecule_potential_energy(cur, num, L)
         # считаем потенциальную энергию выбранной частицы в текущем состоянии
         diff = U_current - U_previous  # разница энергий
@@ -52,24 +50,20 @@ def play_out_states(molecules_ensemble, M, N, delta, L, T, execution_progress_st
 
 
 @numba.njit(cache=True)
-def shift(molecules, shift_, num, coordinate, L):
+def shift(molecules, delta, num, L):
     """
-    Смещение в массиве молекул одной заданной молекулы в заданном направлении на заданную величину
+    Смещение в массиве молекул одной заданной молекулы на случайную величину
 
-    :param molecules: массив молекул в нектором состоянии
-    :param shift_: величина смещения
+    :param molecules: массив молекул в некотором состоянии
+    :param delta: константа сдвига
     :param num: номер заданной молекулы
-    :param coordinate: номер заданной координаты (0 – "x", 1 – "y", 2 – "z")
     :param L: длина ребра ячейки моделирования
     :return: массив частиц в некотором состоянии, в котором одна из частиц подвеглась сдвигу
     """
     shifted_molecules = molecules.copy()
-    if coordinate == 0:
-        shifted_molecules[num] = shift_a_molecule(shifted_molecules[num], shift_, 0, L)
-    elif coordinate == 1:
-        shifted_molecules[num] = shift_a_molecule(shifted_molecules[num], shift_, 1, L)
-    elif coordinate == 2:
-        shifted_molecules[num] = shift_a_molecule(shifted_molecules[num], shift_, 2, L)
+    shifted_molecules[num] = shift_a_molecule(shifted_molecules[num], delta * np.random.uniform(-1, 1), 0, L)
+    shifted_molecules[num] = shift_a_molecule(shifted_molecules[num], delta * np.random.uniform(-1, 1), 1, L)
+    shifted_molecules[num] = shift_a_molecule(shifted_molecules[num], delta * np.random.uniform(-1, 1), 2, L)
     return shifted_molecules
 
 
