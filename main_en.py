@@ -34,7 +34,7 @@ if __name__ == '__main__':
     device_to_calculate_pair_correlation_function = CalculateOn.CPU
     # select the CPU or a GPU for calculating the pair correlation function (you can change the GPU device by setting an
     # integer value up to the environment variable CUDA_DEVICE, the first CUDA-supported device is selected by default)
-    # (Be aware: GPU calculation is supported only by Nvidia graphics cards)
+    # (be aware: GPU calculation is supported only by Nvidia graphics cards)
     # to calculate on a GPU device you also need to add the path of cl.exe to the Path environment variable,
     # example of the cl.exe location below:
     # C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\VC\Tools\MSVC\14.28.29333\bin\Hostx64\x64
