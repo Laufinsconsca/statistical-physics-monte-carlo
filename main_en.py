@@ -164,7 +164,7 @@ if __name__ == '__main__':
               time.strftime("%D %H:%M:%S", time.localtime(end_play_out_time)) + " hh:mm:ss")
         #  -------------------------- </play out states> ---------------------------------------------------------------
         start_corr_func_calc_time = time.time()
-        print("The pair correlation function are being calculated...")
+        print("The pair correlation function is being calculated...")
         if device_to_calculate_pair_correlation_function == CalculateOn.CPU:
             pair_corr_func[i] = calculate_pair_correlation_function_on_cpu(molecules_ensemble, r, delta_r, L, n,
                                                                            pair_corr_func_execution_progress,
@@ -193,8 +193,8 @@ if __name__ == '__main__':
               + str((end_corr_func_calc_time - start_corr_func_calc_time) / (end_play_out_time - start_play_out_time)))
         print("Calculation at T = " + str(T[i] * T0) + " K was completed")
     # --------------------------- </pair correlation function calculation> ---------------------------------------------
-    # --------------------------- <the pair correlation function plotting> ---------------------------------------------
+    # --------------------------- <pair correlation function plotting> ---------------------------------------------
     for i in range(len(T)):
         plot(r, pair_corr_func[i], "g(r*), the pair correlation function of " + chosen_noble_gas.value.name_en
              + " at T = " + str(T[i] * T0) + " K", "r*", "g(r*)")
-    # --------------------------- </the pair correlation function plotting> --------------------------------------------
+    # --------------------------- </pair correlation function plotting> --------------------------------------------
