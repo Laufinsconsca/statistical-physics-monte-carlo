@@ -19,7 +19,7 @@ def play_out_states(molecules_ensemble, M, N, delta, L, T, execution_progress_st
     :param execution_progress_struct: класс типа ExecutionProgress, хранящий параметры вывода процента выполнения
     в консоль
     :param description: описание выполняемого процесса
-    :return: массив, содержащий набор частиц во всех учитываемых (неотсянных) состояниях
+    :return: массив, содержащий набор частиц во всех учитываемых (неотсеянных) состояниях
     """
     progress = 0
     p = 1  # период отображения процента выполнения (в итерациях)
