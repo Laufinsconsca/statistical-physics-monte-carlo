@@ -16,7 +16,7 @@ def calculate_pair_correlation_function_on_cpu(molecules_ensemble, r, delta_r, L
     """
     Вычисление парной корреляционной функции
 
-    :param molecules_ensemble: набор частиц во всех оставшихся состояних, по которым усредняем
+    :param molecules_ensemble: набор частиц во всех оставшихся состояниях, по которым усредняем
     :param r: массив аргументов функции
     :param delta_r: толщина шарового слоя
     :param L: длина ребра ячейки моделирования
